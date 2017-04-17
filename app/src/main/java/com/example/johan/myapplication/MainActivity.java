@@ -15,6 +15,7 @@ import android.hardware.camera2.params.StreamConfigurationMap;
 import android.opengl.GLSurfaceView;
 import android.os.Handler;
 import android.os.HandlerThread;
+import android.os.Looper;
 import android.support.annotation.NonNull;
 import android.support.v4.app.ActivityCompat;
 import android.support.v7.app.AppCompatActivity;
@@ -32,31 +33,34 @@ public class MainActivity extends AppCompatActivity implements SurfaceTexture.On
     private String cameraId;
     private Size imageDimension;
     private SurfaceTexture surface;
-    MySurfaceView myRenderer;
+    MySurfaceRenderer myRenderer;
     protected CameraDevice cameraDevice;
     protected CaptureRequest.Builder captureRequestBuilder;
     protected CameraCaptureSession cameraCaptureSessions;
     private Handler mBackgroundHandler;
+    private Handler mainHandler;
     private HandlerThread mBackgroundThread;
     private static final int REQUEST_CAMERA_PERMISSION = 200;
+    private int texture;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
-        /*GLSurfaceView mGLSurfaceView = (GLSurfaceView) findViewById(R.id.Video);
+        mainHandler = new Handler(Looper.getMainLooper());
+        GLSurfaceView mGLSurfaceView = (GLSurfaceView) findViewById(R.id.Video);
         mGLSurfaceView.setEGLContextClientVersion(2);
         mGLSurfaceView.setEGLContextClientVersion(2);
 
 
-        myRenderer = new MySurfaceView();
+        myRenderer = new MySurfaceRenderer(this);
         mGLSurfaceView.setRenderer(myRenderer);
-        mGLSurfaceView.setRenderMode(GLSurfaceView.RENDERMODE_WHEN_DIRTY); */
+        mGLSurfaceView.setRenderMode(GLSurfaceView.RENDERMODE_WHEN_DIRTY);
 
-        textureView = (TextureView) findViewById(R.id.texture);
+//        textureView = (TextureView) findViewById(R.id.texture);
 
-        textureView.setSurfaceTextureListener(textureListener);
+//        textureView.setSurfaceTextureListener(textureListener);
     }
 
     private final CameraDevice.StateCallback stateCallback = new CameraDevice.StateCallback() {
@@ -78,7 +82,7 @@ public class MainActivity extends AppCompatActivity implements SurfaceTexture.On
         }
     };
 
-    TextureView.SurfaceTextureListener textureListener = new TextureView.SurfaceTextureListener() {
+    /*TextureView.SurfaceTextureListener textureListener = new TextureView.SurfaceTextureListener() {
         @Override
         public void onSurfaceTextureAvailable(SurfaceTexture surface, int width, int height) {
             //open your camera here
@@ -95,9 +99,10 @@ public class MainActivity extends AppCompatActivity implements SurfaceTexture.On
         @Override
         public void onSurfaceTextureUpdated(SurfaceTexture surface) {
         }
-    };
+    };*/
 
-    private void openCamera() {
+    public void openCamera(int texture) {
+        this.texture = texture;
         CameraManager manager = (CameraManager) getSystemService(Context.CAMERA_SERVICE);
 
         try {
@@ -111,7 +116,7 @@ public class MainActivity extends AppCompatActivity implements SurfaceTexture.On
                 ActivityCompat.requestPermissions(MainActivity.this, new String[]{Manifest.permission.CAMERA, Manifest.permission.WRITE_EXTERNAL_STORAGE}, REQUEST_CAMERA_PERMISSION);
                 return;
             }
-            manager.openCamera(cameraId, stateCallback, null);
+            manager.openCamera(cameraId, stateCallback, mainHandler);
         } catch (CameraAccessException e) {
             e.printStackTrace();
         }
@@ -126,11 +131,14 @@ public class MainActivity extends AppCompatActivity implements SurfaceTexture.On
 
     protected void createCameraPreview() {
         try {
-            SurfaceTexture texture = textureView.getSurfaceTexture();
+            SurfaceTexture texture = new SurfaceTexture(this.texture);
+            texture.setOnFrameAvailableListener(this);
+            myRenderer.setSurfaceTexture(texture);
             assert texture != null;
             texture.setDefaultBufferSize(imageDimension.getWidth(), imageDimension.getHeight());
             Surface surface = new Surface(texture);
             captureRequestBuilder = cameraDevice.createCaptureRequest(CameraDevice.TEMPLATE_PREVIEW);
+            //CameraDevice.
             captureRequestBuilder.addTarget(surface);
             cameraDevice.createCaptureSession(Arrays.asList(surface), new CameraCaptureSession.StateCallback(){
                 @Override
@@ -172,15 +180,16 @@ public class MainActivity extends AppCompatActivity implements SurfaceTexture.On
     protected void onResume() {
         super.onResume();
         startBackgroundThread();
-        if (textureView.isAvailable()) {
-            openCamera();
+        /*if (textureView.isAvailable()) {
+            //openCamera();
         } else {
-            textureView.setSurfaceTextureListener(textureListener);
-        }
+            //textureView.setSurfaceTextureListener(textureListener);
+        }*/
     }
 
     @Override
     public void onFrameAvailable(SurfaceTexture surfaceTexture) {
-
+        GLSurfaceView mGLSurfaceView = (GLSurfaceView) findViewById(R.id.Video);
+        mGLSurfaceView.requestRender();
     }
 }
