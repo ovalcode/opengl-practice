@@ -63,6 +63,10 @@ public class MainActivity extends AppCompatActivity implements SurfaceTexture.On
 //        textureView.setSurfaceTextureListener(textureListener);
     }
 
+    public Size getImageDimension() {
+        return imageDimension;
+    }
+
     private final CameraDevice.StateCallback stateCallback = new CameraDevice.StateCallback() {
         @Override
         public void onOpened(CameraDevice camera) {

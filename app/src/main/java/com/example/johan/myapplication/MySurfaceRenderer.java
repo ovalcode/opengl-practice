@@ -4,6 +4,7 @@ import android.graphics.SurfaceTexture;
 import android.opengl.GLES11Ext;
 import android.opengl.GLES20;
 import android.opengl.GLSurfaceView;
+import android.opengl.Matrix;
 
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
@@ -40,6 +41,11 @@ public class MySurfaceRenderer implements GLSurfaceView.Renderer {
     private MainActivity mainActivity;
     private int texture;
     private SurfaceTexture surfaceTexture;
+
+    private final float[] mMVPMatrix = new float[16];
+    private final float[] mProjMatrix = new float[16];
+    private final float[] mVMatrix = new float[16];
+    private float[] mRotationMatrix = new float[16];
 
     MySurfaceRenderer(MainActivity activity) {
         this.mainActivity = activity;
@@ -89,6 +95,12 @@ public class MySurfaceRenderer implements GLSurfaceView.Renderer {
     public void onSurfaceChanged(GL10 gl10, int width, int height) {
         //required for matrix setup
         GLES20.glViewport(0, 0, width, height);
+
+        float ratio = (float) width / height;
+
+        //This Projection Matrix is applied to object coordinates in the onDrawFrame() method
+//        Matrix.frustumM(mProjMatrix, 0, -ratio, ratio, -1, 1, 3, 7);
+        Matrix.orthoM(mProjMatrix,0, -ratio, ratio, -1, 1, 3, 7);
     }
 
     @Override
@@ -119,6 +131,11 @@ public class MySurfaceRenderer implements GLSurfaceView.Renderer {
 //        GLES20.glVertexAttribPointer()
 */
 
+        Matrix.setLookAtM(mVMatrix, 0, 0, 0, 3, 0f, 0f, 0f, 0f, 1.0f, 0.0f);
+        Matrix.multiplyMM(mMVPMatrix, 0, mProjMatrix, 0, mVMatrix, 0);
+        Matrix.setRotateM(mRotationMatrix, 0, 0, 0, 0, -1.0f);
+        Matrix.multiplyMM(mMVPMatrix, 0, mRotationMatrix, 0, mMVPMatrix, 0);
+
         if (surfaceTexture == null)
             return;
         float[] mtx = new float[16];
@@ -126,7 +143,7 @@ public class MySurfaceRenderer implements GLSurfaceView.Renderer {
         surfaceTexture.updateTexImage();
         surfaceTexture.getTransformMatrix(mtx);
 
-        mDirectVideo.draw();
+        mDirectVideo.draw(mMVPMatrix, mainActivity.getImageDimension());
     }
 
     public static int loadShader(int type, String shaderCode) {

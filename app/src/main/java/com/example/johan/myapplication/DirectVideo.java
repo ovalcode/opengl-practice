@@ -2,6 +2,7 @@ package com.example.johan.myapplication;
 
 import android.opengl.GLES11Ext;
 import android.opengl.GLES20;
+import android.util.Size;
 
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
@@ -19,9 +20,10 @@ public class DirectVideo {
             "attribute vec4 position;" +
                     "attribute vec2 inputTextureCoordinate;" +
                     "varying vec2 textureCoordinate;" +
+                    "uniform mat4 uMVPMatrix;" +
                     "void main()" +
                     "{"+
-                    "gl_Position = position;"+
+                    "gl_Position = uMVPMatrix * position;"+
                     "textureCoordinate = inputTextureCoordinate;" +
                     "}";
 
@@ -39,6 +41,7 @@ public class DirectVideo {
     private int mPositionHandle;
     private int mColorHandle;
     private int mTextureCoordHandle;
+    boolean vertexBufferPopulated = false;
 
 
     // number of coordinates per vertex in this array
@@ -53,10 +56,10 @@ public class DirectVideo {
     private short drawOrder[] = { 0, 1, 2, 0, 2, 3 }; // order to draw vertices
 
     static float textureVertices[] = { // in counterclockwise order:
-            1.0f,  1.0f,
-            1.0f,  0.0f,
-            0.0f,  1.0f,
-            0.0f,  0.0f
+            0.0f,  0.0f,
+            0.0f,  1f,
+            1f,  1f,
+            1f,  0.0f
     };
 
     private final int vertexStride = COORDS_PER_VERTEX * 4; // 4 bytes per vertex
@@ -67,11 +70,11 @@ public class DirectVideo {
     {
         texture = _texture;
 
-        ByteBuffer bb = ByteBuffer.allocateDirect(squareVertices.length * 4);
-        bb.order(ByteOrder.nativeOrder());
-        vertexBuffer = bb.asFloatBuffer();
-        vertexBuffer.put(squareVertices);
-        vertexBuffer.position(0);
+//        ByteBuffer bb = ByteBuffer.allocateDirect(squareVertices.length * 4);
+//        bb.order(ByteOrder.nativeOrder());
+//        vertexBuffer = bb.asFloatBuffer();
+//        vertexBuffer.put(squareVertices);
+//        vertexBuffer.position(0);
 
         ByteBuffer dlb = ByteBuffer.allocateDirect(drawOrder.length * 2);
         dlb.order(ByteOrder.nativeOrder());
@@ -94,7 +97,26 @@ public class DirectVideo {
         GLES20.glLinkProgram(mProgram);
     }
 
-    public void draw()
+    public void prepareVertexBuffer(Size imageSize) {
+        int width = imageSize.getWidth();
+        int height = imageSize.getHeight();
+
+        float ratio = (float)width / (float)height;
+
+        for (int i = 0; i < (squareVertices.length >> 1); i++) {
+            float value = squareVertices[(i << 1)];
+            squareVertices[(i << 1)] = value * ratio;
+        }
+
+        ByteBuffer bb = ByteBuffer.allocateDirect(squareVertices.length * 4);
+        bb.order(ByteOrder.nativeOrder());
+        vertexBuffer = bb.asFloatBuffer();
+        vertexBuffer.put(squareVertices);
+        vertexBuffer.position(0);
+        vertexBufferPopulated = true;
+    }
+
+    public void draw(float[] mvpMatrix, Size imageSize)
     {
         GLES20.glUseProgram(mProgram);
 
@@ -103,6 +125,10 @@ public class DirectVideo {
 
         mPositionHandle = GLES20.glGetAttribLocation(mProgram, "position");
         GLES20.glEnableVertexAttribArray(mPositionHandle);
+        //prepare vertex buffer
+        if (!vertexBufferPopulated) {
+            prepareVertexBuffer(imageSize);
+        }
         GLES20.glVertexAttribPointer(mPositionHandle, COORDS_PER_VERTEX, GLES20.GL_FLOAT, false,vertexStride, vertexBuffer);
 
         mTextureCoordHandle = GLES20.glGetAttribLocation(mProgram, "inputTextureCoordinate");
@@ -110,6 +136,9 @@ public class DirectVideo {
         GLES20.glVertexAttribPointer(mTextureCoordHandle, COORDS_PER_VERTEX, GLES20.GL_FLOAT, false,vertexStride, textureVerticesBuffer);
 
         mColorHandle = GLES20.glGetAttribLocation(mProgram, "s_texture");
+
+        int mMVPMatrixHandle = GLES20.glGetUniformLocation(mProgram, "uMVPMatrix");
+        GLES20.glUniformMatrix4fv(mMVPMatrixHandle, 1, false, mvpMatrix, 0);
 
         GLES20.glDrawElements(GLES20.GL_TRIANGLES, drawOrder.length,
                 GLES20.GL_UNSIGNED_SHORT, drawListBuffer);
