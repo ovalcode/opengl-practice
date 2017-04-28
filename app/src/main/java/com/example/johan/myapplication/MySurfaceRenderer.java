@@ -1,9 +1,11 @@
 package com.example.johan.myapplication;
 
+import android.graphics.Bitmap;
 import android.graphics.SurfaceTexture;
 import android.opengl.GLES11Ext;
 import android.opengl.GLES20;
 import android.opengl.GLSurfaceView;
+import android.opengl.GLUtils;
 import android.opengl.Matrix;
 
 import java.nio.ByteBuffer;
@@ -19,13 +21,13 @@ import javax.microedition.khronos.opengles.GL10;
 
 public class MySurfaceRenderer implements GLSurfaceView.Renderer {
 
-    private static final String vShaderStr =
+    private static final String vShaderCamStr =
             "attribute vec4 vPosition;" +
             "void main() {" +
             "  gl_Position = vPosition;" +
             "}";
 
-    private static final String fShaderStr =
+    private static final String fShaderCamStr =
             "precision mediump float;" +
                     //"uniform vec4 vColor;" +
             "void main() {" +
@@ -35,11 +37,11 @@ public class MySurfaceRenderer implements GLSurfaceView.Renderer {
 
     DirectVideo mDirectVideo;
 
-    private int vertexShader;
-    private int fragmentShader;
-    private int glProgram;
+    private int vertexCamShader;
+    private int fragmentCamShader;
+    private int glCamProgram;
     private MainActivity mainActivity;
-    private int texture;
+    private int textures[];
     private SurfaceTexture surfaceTexture;
 
     private final float[] mMVPMatrix = new float[16];
@@ -66,18 +68,20 @@ public class MySurfaceRenderer implements GLSurfaceView.Renderer {
         GLES20.glLinkProgram(glProgram);
         texture = createTexture();
         this.mainActivity.openCamera(texture);*/
-        texture = createTexture();
-        mDirectVideo = new DirectVideo(texture);
+        textures = createTexture();
+        mDirectVideo = new DirectVideo(textures[0], textures[1]);
         GLES20.glClearColor(0.5f, 0.5f, 0.5f, 1.0f);
-        mainActivity.openCamera(texture);
+        mainActivity.openCamera(textures[0]);
         //create texture and start camera with this in mainactivity
     }
 
-    static private int createTexture()
+    private int[] createTexture()
     {
-        int[] texture = new int[1];
+        int[] texture = new int[2];
 
-        GLES20.glGenTextures(1,texture, 0);
+        GLES20.glGenTextures(2,texture, 0);
+
+        GLES20.glActiveTexture(GLES20.GL_TEXTURE0);
         GLES20.glBindTexture(GLES11Ext.GL_TEXTURE_EXTERNAL_OES, texture[0]);
         GLES20.glTexParameterf(GLES11Ext.GL_TEXTURE_EXTERNAL_OES,
                 GL10.GL_TEXTURE_MIN_FILTER,GL10.GL_LINEAR);
@@ -88,7 +92,20 @@ public class MySurfaceRenderer implements GLSurfaceView.Renderer {
         GLES20.glTexParameteri(GLES11Ext.GL_TEXTURE_EXTERNAL_OES,
                 GL10.GL_TEXTURE_WRAP_T, GL10.GL_CLAMP_TO_EDGE);
 
-        return texture[0];
+
+
+
+        GLES20.glActiveTexture(GLES20.GL_TEXTURE1);
+        GLES20.glBindTexture(GLES20.GL_TEXTURE_2D, texture[1]);
+
+        // Set filtering
+        GLES20.glTexParameteri(GLES20.GL_TEXTURE_2D, GLES20.GL_TEXTURE_MIN_FILTER, GLES20.GL_NEAREST);
+        GLES20.glTexParameteri(GLES20.GL_TEXTURE_2D, GLES20.GL_TEXTURE_MAG_FILTER, GLES20.GL_NEAREST);
+        GLUtils.texImage2D(GLES20.GL_TEXTURE_2D, 0, mainActivity.getHeartBitmap(), 0);
+//---------------------------------------------------------------------------------
+
+
+        return texture;
     }
 
     @Override

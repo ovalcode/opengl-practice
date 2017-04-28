@@ -3,6 +3,9 @@ package com.example.johan.myapplication;
 import android.Manifest;
 import android.content.Context;
 import android.content.pm.PackageManager;
+import android.content.res.AssetManager;
+import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
 import android.graphics.SurfaceTexture;
 import android.hardware.camera2.CameraAccessException;
 import android.hardware.camera2.CameraCaptureSession;
@@ -25,10 +28,16 @@ import android.view.Surface;
 import android.view.TextureView;
 import android.widget.Toast;
 
+import java.io.IOException;
+import java.io.InputStream;
+import java.nio.ByteBuffer;
 import java.util.Arrays;
+
+import static android.R.attr.bitmap;
 
 public class MainActivity extends AppCompatActivity implements SurfaceTexture.OnFrameAvailableListener {
 
+    private Bitmap heartBitmap;
     private TextureView textureView;
     private String cameraId;
     private Size imageDimension;
@@ -58,6 +67,21 @@ public class MainActivity extends AppCompatActivity implements SurfaceTexture.On
         mGLSurfaceView.setRenderer(myRenderer);
         mGLSurfaceView.setRenderMode(GLSurfaceView.RENDERMODE_WHEN_DIRTY);
 
+        AssetManager assetMgr = getResources().getAssets();
+
+        try {
+            InputStream is = assetMgr.open("heart.png");
+            heartBitmap = BitmapFactory.decodeStream(is);
+//            int bytes = heartBitmap.getByteCount();
+//            ByteBuffer buffer = ByteBuffer.allocate(bytes);
+//            bitmap.copyPixelsToBuffer(buffer);
+//            Bitmap.Config conf = bitmap.getConfig();
+//            System.out.println(conf.name());
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+
+
 //        textureView = (TextureView) findViewById(R.id.texture);
 
 //        textureView.setSurfaceTextureListener(textureListener);
@@ -65,6 +89,10 @@ public class MainActivity extends AppCompatActivity implements SurfaceTexture.On
 
     public Size getImageDimension() {
         return imageDimension;
+    }
+
+    public Bitmap getHeartBitmap() {
+        return heartBitmap;
     }
 
     private final CameraDevice.StateCallback stateCallback = new CameraDevice.StateCallback() {
